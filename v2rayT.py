@@ -11,8 +11,8 @@ import re
 
 
 v2rayT_path = os.path.expandvars('$HOME') + '/.v2rayT/'
-v2rayT_sub_path = v2rayT_path + '/.v2rayT.sub'
-v2rayT_config_path = v2rayT_path + '/.v2rayT.conf'
+v2rayT_sub_path = v2rayT_path + '.v2rayT.sub'
+v2rayT_config_path = v2rayT_path + '.v2rayT.conf'
 
 if not os.path.exists(v2rayT_path):
     os.mkdir(v2rayT_path, mode=0o777)
