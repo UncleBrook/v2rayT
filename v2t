@@ -10,6 +10,34 @@ import subprocess
 import re
 
 
+tips_subscription = """Please choose what you want to continue:
+    [1] Resubscribe
+    [2] Refresh Config
+    [3] Continue
+    
+Please enter your selection number: """
+
+
+tips_enter_url = """Please enter the subscription url: """
+tips_error_url = """Error address: [{}], please check"""
+
+
+tips_choose_node_or_ping = r"""
+[Choose the node number you want to use ( eg. enter " 0 ~ 100+ " )] or [Test the speed of all nodes ( ping, eg. enter " p " )]："""
+
+
+tips_choose_node = r"""
+Choose the node number you want to use ( eg. enter"0 ~ 100+" )： """
+
+
+tips_make_sure_node= """
+Are you sure you want to use this node? [y/N] """
+
+
+format_node = """    [ {} ] {}"""
+format_ping = """    [ {} ] {} [ {} ms ]"""
+
+
 v2rayT_path = os.path.expandvars('$HOME') + '/.v2rayT/'
 v2rayT_sub_path = v2rayT_path + '.v2rayT.sub'
 v2rayT_config_path = v2rayT_path + '.v2rayT.conf'
@@ -25,7 +53,7 @@ if not os.path.exists(v2rayT_config_path):
 
 
 def addSubUrl():
-    sub_url = input('Please enter the subscription url: ')
+    sub_url = input(tips_enter_url)
     sub_file = open(v2rayT_sub_path, 'w+')
     sub_file.write(sub_url)
     sub_file.close()
@@ -60,10 +88,36 @@ def loadSubContent():
             content += b'=' * missingPadding
         return content
     except:
-        print('Error address: ' + v2rayT_sub_url + ', please check')
+        print(tips_error_url.format(v2rayT_sub_url))
         os.remove(v2rayT_sub_path)
         os.remove(v2rayT_config_path)
         exit()
+
+
+def ping(server_list):
+    for i in range(len(server_list)):
+        host = server_list[i]['add']
+        response_time = -1
+        try:
+            output = subprocess.check_output(['ping', '-c', '3', '-w', '10', '-q', host])
+            output = output.decode('utf8')
+            statistic = re.search(r'(\d+\.\d+/){3}\d+\.\d+', output).group(0)
+            avg_time = re.findall(r'\d+\.\d+', statistic)[1]
+            response_time = float(avg_time)
+
+        except subprocess.CalledProcessError:
+            response_time = 99999999
+        print(format_ping.format(str(i), server_list[i]['ps'], response_time))
+
+
+def verifyNodeNumber(node_number):
+    while True:
+        try:
+            node_number = int(node_number)
+            return node_number
+        except:
+            node_number = int(input(tips_choose_node))
+            verifyNodeNumber(node_number)
 
 
 v2rayT_configs = ''
@@ -72,8 +126,7 @@ if not v2rayT_sub_url:
     v2rayT_configs = addConfigs(loadSubContent())
 else:
     while True:
-        branch = int(input(
-            'Please choose what you want to continue: \n [1] Resubscribe\n [2] Refresh Config\n [3] Continue \nPlease enter your selection number: '))
+        branch = int(input(tips_subscription))
         if branch == 1:
             v2rayT_sub_url = addSubUrl()
             v2rayT_configs = addConfigs(loadSubContent())
@@ -86,20 +139,23 @@ else:
             break
 
 
-print('\n')
 server_list = str.encode(v2rayT_configs).splitlines()
 for i in range(len(server_list)):
     server_node = json.loads(base64.b64decode(
         bytes.decode(server_list[i]).replace('vmess://', '')))
-    print(' [' + str(i) + '] ' + server_node['ps'])
+    print(format_node.format(str(i), server_node['ps']))
     server_list[i] = server_node
 
 
 while True:
-    checked_node_id = int(input("\nPlease enter the node number to use："))
+    node_or_ping = input(tips_choose_node_or_ping)
+    if re.search('[pPyY]', node_or_ping):
+        ping(server_list)
+
+    checked_node_id = verifyNodeNumber(node_or_ping)
     subprocess.call(
         '\nping ' + server_list[checked_node_id]['add'] + ' -c 3 -w 10', shell=True)
-    yes_or_no = input('\nAre you sure you want to use this node?[y/N] ')
+    yes_or_no = input(tips_make_sure_node)
     if re.search('[yesYES]', yes_or_no):
         break
     elif re.search('[noNO]', yes_or_no):

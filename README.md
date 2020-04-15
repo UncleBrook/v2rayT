@@ -7,7 +7,7 @@
 或者使用下面命令
 ```
 $ su
-$ curl https://raw.githubusercontent.com/UncleBrook/v2rayT/master/v2rayT.py > /usr/sbin/v2rayT.py && chmod a+x /usr/sbin/v2rayT.py
+$ curl https://raw.githubusercontent.com/UncleBrook/v2rayT/master/v2t > /usr/sbin/v2t && chmod a+x /usr/sbin/v2t
 ```
 
 V2Ray 安装过程请参考 [V2Ray](https://www.v2ray.com/chapter_00/install.html)
