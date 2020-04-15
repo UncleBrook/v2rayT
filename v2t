@@ -27,7 +27,7 @@ tips_choose_node_or_ping = r"""
 
 
 tips_choose_node = r"""
-Choose the node number you want to use ( eg. enter"0 ~ 100+" )： """
+Choose the node number you want to use ( eg. enter "0 ~ 100+" )： """
 
 
 tips_make_sure_node= """
