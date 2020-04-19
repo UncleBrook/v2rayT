@@ -6,7 +6,7 @@
 可以将本脚本添加到  `/usr/bin` 或 `/usr/sbin` 或 `/bin`，或参考 `echo $PATH` 下的具体位置
 或者使用下面命令
 ```
-$ su
+$ sudo su
 $ curl https://raw.githubusercontent.com/UncleBrook/v2rayT/master/v2t > /usr/sbin/v2t && chmod a+x /usr/sbin/v2t
 ```
 
