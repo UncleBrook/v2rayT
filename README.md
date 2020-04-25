@@ -11,3 +11,7 @@ $ curl https://raw.githubusercontent.com/UncleBrook/v2rayT/master/v2t > /usr/sbi
 ```
 
 V2Ray 安装过程请参考 [V2Ray](https://www.v2ray.com/chapter_00/install.html)
+`Ubuntu` 安装方式
+```
+$ bash <(curl -L -s https://install.direct/go.sh)
+```
