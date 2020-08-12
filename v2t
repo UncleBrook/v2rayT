@@ -8,6 +8,11 @@ import base64
 import json
 import subprocess
 import re
+from threading import Thread
+if sys.version > '3':
+    from queue import Queue
+else:
+    from Queue import Queue
 
 
 tips_subscription = """Please choose what you want to continue:
@@ -23,11 +28,11 @@ tips_error_url = """Error address: [{}], please check"""
 
 
 tips_choose_node_or_ping = r"""
-[Choose the node number you want to use ( eg. enter " 0 ~ 100+ " )] or [Test the speed of all nodes ( ping, eg. enter " p " )]："""
+[Choose the node number you want to use ( eg. enter " 0 ~ {} " )] or [Test the speed of all nodes ( ping, eg. enter " p " )]："""
 
 
 tips_choose_node = r"""
-Choose the node number you want to use ( eg. enter " 0 ~ 100+ " )： """
+Choose the node number you want to use ( eg. enter " 0 ~ {} " )： """
 
 
 tips_make_sure_node= """
@@ -50,6 +55,12 @@ if not os.path.exists(v2rayT_sub_path):
 
 if not os.path.exists(v2rayT_config_path):
     open(v2rayT_config_path, 'w+')
+
+
+class Node():
+    index = 0
+    host = ""
+    ps = ""
 
 
 def addSubUrl():
@@ -93,10 +104,10 @@ def loadSubContent():
         os.remove(v2rayT_config_path)
         exit()
 
-
-def ping(server_list):
-    for i in range(len(server_list)):
-        host = server_list[i]['add']
+def pingReal(i, queue):
+    while True:
+        node = queue.get()
+        host = node.host
         response_time = -1
         try:
             output = subprocess.check_output(['ping', '-c', '3', '-w', '10', '-q', host])
@@ -107,7 +118,40 @@ def ping(server_list):
 
         except subprocess.CalledProcessError:
             response_time = 99999999
-        print(format_ping.format(str(i), server_list[i]['ps'], response_time))
+        print(format_ping.format(str(node.index), node.ps, response_time))   
+        queue.task_done()
+
+def ping(server_list):
+    lenServer = len(server_list)
+    queue = Queue(lenServer)
+    num_threads = 10
+    
+    for i in range(num_threads):
+        thread = Thread(target=pingReal, args=(i, queue))
+        thread.setDaemon(True)
+        thread.start()
+
+    for i in range(lenServer):
+        node = Node()
+        node.host = server_list[i]['add']
+        node.index = i
+        node.ps = server_list[i]['ps']
+        queue.put(node)
+    queue.join()
+
+    # for i in range(len(server_list)):
+    #     host = server_list[i]['add']
+    #     response_time = -1
+    #     try:
+    #         output = subprocess.check_output(['ping', '-c', '3', '-w', '10', '-q', host])
+    #         output = output.decode('utf8')
+    #         statistic = re.search(r'(\d+\.\d+/){3}\d+\.\d+', output).group(0)
+    #         avg_time = re.findall(r'\d+\.\d+', statistic)[1]
+    #         response_time = float(avg_time)
+
+    #     except subprocess.CalledProcessError:
+    #         response_time = 99999999
+    #     print(format_ping.format(str(i), server_list[i]['ps'], response_time))
 
 
 def verifyNodeNumber(node_number):
@@ -116,7 +160,7 @@ def verifyNodeNumber(node_number):
             node_number = int(node_number)
             return node_number
         except:
-            node_number = int(input(tips_choose_node))
+            node_number = int(input(tips_choose_node.format(len(server_list) - 1)))
             verifyNodeNumber(node_number)
 
 
@@ -148,7 +192,7 @@ for i in range(len(server_list)):
 
 
 while True:
-    node_or_ping = input(tips_choose_node_or_ping)
+    node_or_ping = input(tips_choose_node_or_ping.format((len(server_list) - 1)))
     if re.search('[pPyY]', node_or_ping):
         ping(server_list)
 
