@@ -9,16 +9,19 @@ import json
 import subprocess
 import re
 from threading import Thread
+import _thread 
 if sys.version > '3':
     from queue import Queue
+    from queue import PriorityQueue
 else:
     from Queue import Queue
+    from Queue import PriorityQueue
 
 
 tips_subscription = """Please choose what you want to continue:
-    [1] Resubscribe
-    [2] Refresh Config
-    [3] Continue
+    [ 1 ]  Resubscribe
+    [ 2 ]  Refresh Config
+    [ 3 ]  Continue
     
 Please enter your selection number: """
 
@@ -39,8 +42,8 @@ tips_make_sure_node= """
 Are you sure you want to use this node? [y/N] """
 
 
-format_node = """    [ {} ] {}"""
-format_ping = """    [ {} ] {} [ {} ms ]"""
+format_node = """    [ {:^4} ]  {}"""
+format_ping = """    [ {:^4} ]  [  {:<6} ms  ]  {} """
 
 
 v2rayT_path = os.path.expandvars('$HOME') + '/.v2rayT/'
@@ -61,6 +64,32 @@ class Node():
     index = 0
     host = ""
     ps = ""
+
+
+class PingNode():
+    index = 0
+    host = ""
+    ps = ""
+    response_time = 0
+
+    def __eq__(self, other):
+        return (self.response_time == other.response_time 
+            and self.index == other.index
+            and self.host == other.host
+            and self.ps == other.ps)
+
+    def __lt__(self, other):
+        return self.response_time < other.response_time
+
+
+class TPrint():
+    lock = _thread.allocate_lock()
+    def tprint(self, str):
+        self.lock.acquire()
+        sys.stdout.flush()
+        print(str, end='')
+        self.lock.release()
+
 
 
 def addSubUrl():
@@ -89,6 +118,7 @@ def readConfigs():
 v2rayT_sub_file = open(v2rayT_sub_path, 'r')
 v2rayT_sub_url = v2rayT_sub_file.read().strip()
 v2rayT_sub_file.close()
+pingNodeQueue = PriorityQueue()
 
 
 def loadSubContent():
@@ -114,20 +144,30 @@ def pingReal(i, queue):
             output = output.decode('utf8')
             statistic = re.search(r'(\d+\.\d+/){3}\d+\.\d+', output).group(0)
             avg_time = re.findall(r'\d+\.\d+', statistic)[1]
-            response_time = float(avg_time)
+            response_time = round(float(avg_time), 2)
 
         except subprocess.CalledProcessError:
-            response_time = 99999999
-        print(format_ping.format(str(node.index), node.ps, response_time))   
+            response_time = 99999
+
+        pingNode = PingNode()
+        pingNode.ps = node.ps
+        pingNode.host = host
+        pingNode.index = node.index
+        pingNode.response_time = response_time
+        pingNodeQueue.put(pingNode)
+
         queue.task_done()
+        TPrint().tprint(":")
 
 def ping(server_list):
     lenServer = len(server_list)
-    queue = Queue(lenServer)
+    nodeQueue = Queue(lenServer)
     num_threads = 10
     
+    print("\nPinging, please wait ::", end='')
+
     for i in range(num_threads):
-        thread = Thread(target=pingReal, args=(i, queue))
+        thread = Thread(target=pingReal, name="Thread-{}".format(i), args=(i, nodeQueue))
         thread.setDaemon(True)
         thread.start()
 
@@ -136,8 +176,16 @@ def ping(server_list):
         node.host = server_list[i]['add']
         node.index = i
         node.ps = server_list[i]['ps']
-        queue.put(node)
-    queue.join()
+        nodeQueue.put(node)
+
+    nodeQueue.join()
+
+    print("\n")
+    for i in range(pingNodeQueue.qsize()):
+        pingNode = pingNodeQueue.get()
+        print(format_ping.format(str(pingNode.index), pingNode.response_time, pingNode.ps))
+        pingNodeQueue.task_done()
+    pingNodeQueue.join()
 
     # for i in range(len(server_list)):
     #     host = server_list[i]['add']
@@ -195,7 +243,7 @@ while True:
     node_or_ping = input(tips_choose_node_or_ping.format((len(server_list) - 1)))
     if re.search('[pPyY]', node_or_ping):
         ping(server_list)
-
+    
     checked_node_id = verifyNodeNumber(node_or_ping)
     subprocess.call(
         '\nping ' + server_list[checked_node_id]['add'] + ' -c 3 -w 10', shell=True)
