@@ -9,7 +9,7 @@ import base64
 import json
 import subprocess
 import re
-from threading import Thread
+from threading import Event, Thread
 import _thread 
 if sys.version > '3':
     from queue import Queue
@@ -26,6 +26,11 @@ tips_subscription = """Please choose what you want to continue:
     [ 4 ]  Read from file
     
 Please enter your selection number: """
+
+
+tips_core = """
+If you continue to use v2ray-core please "Enter", if you want to use xray-core please enter "x"
+"""
 
 
 tips_enter_url = """Please enter the subscription url: """
@@ -441,8 +446,23 @@ try:
 except:
     json.dump(v2ray_config, open('/usr/local/etc/v2ray/config.json', 'w'), indent=2)
 
-print("\nRestart v2ray...")
-subprocess.call('sudo systemctl restart v2ray.service', shell=True)
-print('Well done, it\'s completed')
 
+while True:
+    branch = input(tips_core)
+    if branch == "x":
+        print("\nRestart xray...")
+        subprocess.call('sudo systemctl stop v2ray.service', shell=True)
+        config = '/etc/v2ray/config.json'
+        if not config:
+            config = '/usr/local/etc/v2ray/config.json'
+        
+        subprocess.call('sudo nohup xray -c %s > %sxray.log 2>&1 &' % (config, v2rayT_path), shell=True)
+        break
+    else:
+        print("\nRestart v2ray...")
+        subprocess.call('sudo systemctl restart v2ray.service', shell=True)
+        break
+        
+
+print('Well done, it\'s completed')
 exit()
