@@ -452,10 +452,7 @@ while True:
     if branch == "x":
         print("\nRestart xray...")
         subprocess.call('sudo systemctl stop v2ray.service', shell=True)
-        config = '/etc/v2ray/config.json'
-        if not config:
-            config = '/usr/local/etc/v2ray/config.json'
-        
+        config = '/usr/local/etc/v2ray/config.json'
         subprocess.call('sudo nohup xray -c %s > %sxray.log 2>&1 &' % (config, v2rayT_path), shell=True)
         break
     else:
