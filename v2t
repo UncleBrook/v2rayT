@@ -10,7 +10,9 @@ import json
 import subprocess
 import re
 from threading import Event, Thread
-import _thread 
+import _thread
+
+from requests.api import patch 
 if sys.version > '3':
     from queue import Queue
     from queue import PriorityQueue
@@ -302,11 +304,15 @@ address = server_list[checked_node_id]['add']
 port = int(server_list[checked_node_id]['port'])
 alter_id = server_list[checked_node_id]['aid']
 users_id = server_list[checked_node_id]['id']
+network = server_list[checked_node_id]['net']
+path = server_list[checked_node_id]['path']
+host = server_list[checked_node_id]['host']
 
-v2ray_config = {
+
+config = {
     "dns": {
         "servers": [
-            "1.1.1.1"
+            "8.8.4.4"
         ]
     },
     "inbounds": [
@@ -356,25 +362,26 @@ v2ray_config = {
                             {
                                 "alterId": alter_id,
                                 "id": users_id,
-                                "level": 8,
-                                "security": "auto"
+                                "level": 0,
+                                "security": "auto",
+                                "testsEnabled": "none"
                             }
                         ]
                     }
                 ]
             },
             "streamSettings": {
-                "network": "ws",
-                "security": "",
+                "network": network,
+                "security": "none",
                 "wssettings": {
                     "connectionReuse": True,
                     "headers": {
-                        "Host": ""
+                        "Host": host
                     },
-                    "path": "video"
+                    "path": path
                 }
             },
-            "tag": "proxy"
+            "tag": "outbound_proxy"
         },
         {
             "protocol": "freedom",
@@ -441,24 +448,22 @@ v2ray_config = {
     "stats": {}
 }
 
-try:
-    json.dump(v2ray_config, open('/etc/v2ray/config.json', 'w'), indent=2)
-except:
-    json.dump(v2ray_config, open('/usr/local/etc/v2ray/config.json', 'w'), indent=2)
+
+json.dump(config, open('/usr/local/etc/v2ray/config.json', 'w'), indent=2)
+json.dump(config, open('/usr/local/etc/xray/config.json', 'w'), indent=2)
 
 
 while True:
     branch = input(tips_core)
+    subprocess.call('sudo systemctl stop v2ray.service', shell=True)
+    subprocess.call('sudo systemctl stop xray.service', shell=True)
     if branch == "x":
         print("\nRestart xray...")
-        subprocess.call('sudo systemctl stop v2ray.service', shell=True)
-        config = '/usr/local/etc/v2ray/config.json'
-        subprocess.call('sudo nohup xray -c %s > %sxray.log 2>&1 &' % (config, v2rayT_path), shell=True)
-        break
+        subprocess.call('sudo systemctl start xray.service', shell=True)
     else:
         print("\nRestart v2ray...")
-        subprocess.call('sudo systemctl restart v2ray.service', shell=True)
-        break
+        subprocess.call('sudo systemctl start v2ray.service', shell=True)
+    break
         
 
 print('Well done, it\'s completed')
